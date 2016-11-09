@@ -20,62 +20,30 @@
 package cli
 
 import (
-	"fmt"
-
+	"mynewt.apache.org/newt/newtmgr/config"
 	"mynewt.apache.org/newt/newtmgr/protocol"
-	"mynewt.apache.org/newt/util"
-
-	"github.com/spf13/cobra"
+	"mynewt.apache.org/newt/newtmgr/transport"
 )
 
-func configRunCmd(cmd *cobra.Command, args []string) {
-	if len(args) < 1 {
-		nmUsage(cmd, util.NewNewtError("Need variable name"))
-	}
-
-	runner, err := getTargetCmdRunner()
+func getTargetCmdRunner() (*protocol.CmdRunner, error) {
+	cpm, err := config.NewConnProfileMgr()
 	if err != nil {
-		nmUsage(cmd, err)
+		return nil, err
 	}
 
-	config, err := protocol.NewConfig()
+	profile, err := cpm.GetConnProfile(ConnProfileName)
 	if err != nil {
-		nmUsage(cmd, err)
+		return nil, err
 	}
 
-	config.Name = args[0]
-	if len(args) > 1 {
-		config.Value = args[1]
-	}
-	nmr, err := config.EncodeRequest()
+	conn, err := transport.NewConn(profile)
 	if err != nil {
-		nmUsage(cmd, err)
+		return nil, err
 	}
 
-	if err := runner.WriteReq(nmr); err != nil {
-		nmUsage(cmd, err)
-	}
-
-	rsp, err := runner.ReadResp()
+	runner, err := protocol.NewCmdRunner(conn)
 	if err != nil {
-		nmUsage(cmd, err)
+		return nil, err
 	}
-
-	configRsp, err := protocol.DecodeConfigResponse(rsp.Data)
-	if err != nil {
-		nmUsage(cmd, err)
-	}
-	if configRsp.Value != "" {
-		fmt.Printf("Value: %s\n", configRsp.Value)
-	}
-}
-
-func configCmd() *cobra.Command {
-	statsCmd := &cobra.Command{
-		Use:   "config",
-		Short: "Read or write config value on target",
-		Run:   configRunCmd,
-	}
-
-	return statsCmd
+	return runner, nil
 }

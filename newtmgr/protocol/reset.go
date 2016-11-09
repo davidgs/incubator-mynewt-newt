@@ -17,23 +17,32 @@
  * under the License.
  */
 
-package cli
+package protocol
 
-import (
-	"fmt"
-	"os"
+type Reset struct {
+}
 
-	"github.com/spf13/cobra"
-)
+func NewReset() (*Reset, error) {
+	r := &Reset{}
+	return r, nil
+}
 
-func nmUsage(cmd *cobra.Command, err error) {
+func (r *Reset) EncodeWriteRequest() (*NmgrReq, error) {
+	msg := "{}"
+
+	data := []byte(msg)
+
+	nmr, err := NewNmgrReq()
 	if err != nil {
-		fmt.Printf("ERROR: %s\n", err.Error())
+		return nil, err
 	}
 
-	if cmd != nil {
-		cmd.Help()
-	}
+	nmr.Op = NMGR_OP_WRITE
+	nmr.Flags = 0
+	nmr.Group = NMGR_GROUP_ID_DEFAULT
+	nmr.Id = NMGR_ID_RESET
+	nmr.Len = uint16(len(data))
+	nmr.Data = data
 
-	os.Exit(1)
+	return nmr, nil
 }

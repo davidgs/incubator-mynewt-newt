@@ -17,59 +17,55 @@
  * under the License.
  */
 
-package cli
+package protocol
 
 import (
+	"encoding/json"
 	"fmt"
 
-	"mynewt.apache.org/newt/newtmgr/protocol"
-
-	"github.com/spf13/cobra"
+	"mynewt.apache.org/newt/util"
 )
 
-func echoRunCmd(cmd *cobra.Command, args []string) {
-	runner, err := getTargetCmdRunner()
-	if err != nil {
-		nmUsage(cmd, err)
-	}
-
-	echo, err := protocol.NewEcho()
-	if err != nil {
-		nmUsage(cmd, err)
-	}
-
-	if len(args) != 1 {
-		nmUsage(cmd, nil)
-	}
-	echo.Message = args[0]
-
-	nmr, err := echo.EncodeWriteRequest()
-	if err != nil {
-		nmUsage(cmd, err)
-	}
-
-	if err := runner.WriteReq(nmr); err != nil {
-		nmUsage(cmd, err)
-	}
-
-	rsp, err := runner.ReadResp()
-	if err != nil {
-		nmUsage(cmd, err)
-	}
-
-	ersp, err := protocol.DecodeEchoResponse(rsp.Data)
-	if err != nil {
-		nmUsage(cmd, err)
-	}
-	fmt.Println(ersp.Message)
+type Crash struct {
+	crashType string
+	Err       int `json:"rc"`
 }
 
-func echoCmd() *cobra.Command {
-	echoCmd := &cobra.Command{
-		Use:   "echo",
-		Short: "Send data to remote endpoint using newtmgr, and receive data back",
-		Run:   echoRunCmd,
+func NewCrash(crashType string) (*Crash, error) {
+	c := &Crash{
+		crashType: crashType,
+	}
+	return c, nil
+}
+
+func (c *Crash) EncodeWriteRequest() (*NmgrReq, error) {
+	msg := "{\"t\":\""
+	msg += c.crashType
+	msg += "\"}"
+
+	data := []byte(msg)
+
+	nmr, err := NewNmgrReq()
+	if err != nil {
+		return nil, err
 	}
 
-	return echoCmd
+	nmr.Op = NMGR_OP_WRITE
+	nmr.Flags = 0
+	nmr.Group = NMGR_GROUP_ID_CRASH
+	nmr.Id = 0
+	nmr.Len = uint16(len(data))
+	nmr.Data = data
+
+	return nmr, nil
+}
+
+func DecodeCrashResponse(data []byte) (*Crash, error) {
+	c := &Crash{}
+
+	if err := json.Unmarshal(data, &c); err != nil {
+		return nil, util.NewNewtError(fmt.Sprintf("Invalid response: %s",
+			err.Error()))
+	}
+	return c, nil
 }

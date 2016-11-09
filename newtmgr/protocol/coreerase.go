@@ -21,70 +21,43 @@ package protocol
 
 import (
 	"encoding/json"
-
 	"fmt"
+
 	"mynewt.apache.org/newt/util"
 )
 
-type ImageBoot struct {
-	BootTarget string
-	Test       string
-	Main       string
-	Active     string
-	ReturnCode int `json:"rc"`
+type CoreErase struct {
+	ErrCode uint32 `json:"rc"`
 }
 
-func NewImageBoot() (*ImageBoot, error) {
-	s := &ImageBoot{}
-	s.BootTarget = ""
-	s.Test = ""
-	s.Main = ""
-	s.Active = ""
-	return s, nil
+func NewCoreErase() (*CoreErase, error) {
+	ce := &CoreErase{}
+
+	return ce, nil
 }
 
-func (i *ImageBoot) EncodeWriteRequest() (*NmgrReq, error) {
+func (ce *CoreErase) EncodeWriteRequest() (*NmgrReq, error) {
 	nmr, err := NewNmgrReq()
 	if err != nil {
 		return nil, err
 	}
 
-	nmr.Op = NMGR_OP_READ
+	nmr.Op = NMGR_OP_WRITE
 	nmr.Flags = 0
 	nmr.Group = NMGR_GROUP_ID_IMAGE
-	nmr.Id = IMGMGR_NMGR_OP_BOOT
+	nmr.Id = IMGMGR_NMGR_OP_CORELOAD
 	nmr.Len = 0
 
-	if i.BootTarget != "" {
-		type BootReq struct {
-			Test string `json:"test"`
-		}
-
-		bReq := &BootReq{
-			Test: i.BootTarget,
-		}
-		data, _ := json.Marshal(bReq)
-		nmr.Data = data
-		nmr.Len = uint16(len(data))
-		nmr.Op = NMGR_OP_WRITE
-	}
 	return nmr, nil
 }
 
-func DecodeImageBootResponse(data []byte) (*ImageBoot, error) {
-	i := &ImageBoot{}
+func DecodeCoreEraseResponse(data []byte) (*CoreErase, error) {
+	ce := &CoreErase{}
 
-	if len(data) == 0 {
-		return i, nil
-	}
-	err := json.Unmarshal(data, &i)
+	err := json.Unmarshal(data, &ce)
 	if err != nil {
 		return nil, util.NewNewtError(fmt.Sprintf("Invalid incoming json: %s",
 			err.Error()))
 	}
-	if i.ReturnCode != 0 {
-		return nil, util.NewNewtError(fmt.Sprintf("Target error: %d",
-			i.ReturnCode))
-	}
-	return i, nil
+	return ce, nil
 }

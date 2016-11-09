@@ -22,32 +22,22 @@ package cli
 import (
 	"fmt"
 
-	"mynewt.apache.org/newt/newtmgr/protocol"
-	"mynewt.apache.org/newt/util"
-
 	"github.com/spf13/cobra"
+	"mynewt.apache.org/newt/newtmgr/protocol"
 )
 
-func configRunCmd(cmd *cobra.Command, args []string) {
-	if len(args) < 1 {
-		nmUsage(cmd, util.NewNewtError("Need variable name"))
-	}
-
+func resetRunCmd(cmd *cobra.Command, args []string) {
 	runner, err := getTargetCmdRunner()
 	if err != nil {
 		nmUsage(cmd, err)
 	}
 
-	config, err := protocol.NewConfig()
+	reset, err := protocol.NewReset()
 	if err != nil {
 		nmUsage(cmd, err)
 	}
 
-	config.Name = args[0]
-	if len(args) > 1 {
-		config.Value = args[1]
-	}
-	nmr, err := config.EncodeRequest()
+	nmr, err := reset.EncodeWriteRequest()
 	if err != nil {
 		nmUsage(cmd, err)
 	}
@@ -56,26 +46,20 @@ func configRunCmd(cmd *cobra.Command, args []string) {
 		nmUsage(cmd, err)
 	}
 
-	rsp, err := runner.ReadResp()
+	_, err = runner.ReadResp()
 	if err != nil {
 		nmUsage(cmd, err)
 	}
 
-	configRsp, err := protocol.DecodeConfigResponse(rsp.Data)
-	if err != nil {
-		nmUsage(cmd, err)
-	}
-	if configRsp.Value != "" {
-		fmt.Printf("Value: %s\n", configRsp.Value)
-	}
+	fmt.Println("Done")
 }
 
-func configCmd() *cobra.Command {
-	statsCmd := &cobra.Command{
-		Use:   "config",
-		Short: "Read or write config value on target",
-		Run:   configRunCmd,
+func resetCmd() *cobra.Command {
+	resetCmd := &cobra.Command{
+		Use:   "reset",
+		Short: "Send reset request to remote endpoint using newtmgr",
+		Run:   resetRunCmd,
 	}
 
-	return statsCmd
+	return resetCmd
 }
